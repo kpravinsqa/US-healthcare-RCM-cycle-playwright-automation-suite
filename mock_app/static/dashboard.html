@@ -1,0 +1,36 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>CareCycle RCM | Provider Dashboard</title>
+<link rel="stylesheet" href="styles.css"><script src="common.js"></script><script src="app.js"></script></head>
+<body><main>
+<h1 data-testid="page-title">Provider Dashboard</h1>
+<div class="card" id="picker" hidden><label for="prov-select">Provider</label><select id="prov-select" data-testid="provider-select"></select></div>
+<h2 data-testid="provider-name"></h2>
+<div class="grid">
+  <div class="card"><div class="muted">Encounters</div><div class="kpi" data-testid="kpi-encounters">0</div></div>
+  <div class="card"><div class="muted">Open (unbilled)</div><div class="kpi" data-testid="kpi-open">0</div></div>
+  <div class="card"><div class="muted">Billed</div><div class="kpi" data-testid="kpi-billed">0</div></div>
+  <div class="card"><div class="muted">Total charges</div><div class="kpi" data-testid="kpi-charges">$0.00</div></div>
+</div>
+<div class="card"><h2>My encounters</h2>
+<table data-testid="dashboard-encounters"><thead><tr><th>DOS</th><th>Patient</th><th>MRN</th><th>Diagnoses</th><th>CPT</th><th>Charge</th><th>Status</th></tr></thead><tbody></tbody></table>
+<p class="muted" data-testid="no-encounters" hidden>No encounters recorded yet.</p></div>
+</main>
+<script>
+async function render(pid) {
+  const r = await API.get("/api/dashboard/provider" + (pid ? "?provider_id=" + pid : "")); if (!r.ok) return toast(r.data.error, "error");
+  const d = r.data; $('[data-testid="provider-name"]').textContent = `Dr. ${d.provider.first_name} ${d.provider.last_name} — ${d.provider.specialty}`;
+  $('[data-testid="kpi-encounters"]').textContent = d.summary.encounters; $('[data-testid="kpi-open"]').textContent = d.summary.open;
+  $('[data-testid="kpi-billed"]').textContent = d.summary.billed; $('[data-testid="kpi-charges"]').textContent = money(d.summary.total_charges, "USD");
+  const tbody = $('[data-testid="dashboard-encounters"] tbody'); tbody.innerHTML = "";
+  d.encounters.forEach(e => tbody.append(el("tr", { testid: "dash-encounter-" + e.id }, el("td", {}, e.date_of_service), el("td", { testid: "patient" }, e.patient_name),
+    el("td", {}, e.mrn), el("td", { testid: "dx" }, e.diagnoses.join(", ")), el("td", { testid: "cpt" }, e.lines.map(l => l.units > 1 ? `${l.cpt}×${l.units}` : l.cpt).join(", ")),
+    el("td", { testid: "charge" }, money(e.total_charge, "USD")), el("td", {}, el("span", { class: "status", testid: "status" }, e.status)))));
+  $('[data-testid="no-encounters"]').hidden = d.encounters.length > 0;
+}
+if (shell("dashboard")) (async () => {
+  const u = API.user();
+  if (u.role === "ADMIN") { const provs = (await API.get("/api/providers")).data.items; $("#picker").hidden = false;
+    provs.forEach(p => $("#prov-select").append(el("option", { value: p.id }, `Dr. ${p.first_name} ${p.last_name}`)));
+    $("#prov-select").addEventListener("change", e => render(e.target.value)); render(provs[0].id); }
+  else render();
+})();
+</script></body></html>

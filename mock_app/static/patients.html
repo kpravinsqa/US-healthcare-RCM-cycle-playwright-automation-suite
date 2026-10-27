@@ -1,0 +1,49 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>CareCycle RCM | Patients</title>
+<link rel="stylesheet" href="styles.css"><script src="common.js"></script><script src="app.js"></script></head>
+<body><main>
+<h1 data-testid="page-title">Patients</h1>
+<div class="card"><h2>Register patient</h2>
+<form id="patient-form" novalidate>
+  <div class="row">
+    <div><label for="first_name">First name</label><input id="first_name" name="first_name" data-testid="first_name"><div class="field-error" data-testid="error-first_name"></div></div>
+    <div><label for="last_name">Last name</label><input id="last_name" name="last_name" data-testid="last_name"><div class="field-error" data-testid="error-last_name"></div></div>
+    <div><label for="dob">Date of birth</label><input id="dob" name="dob" type="date" data-testid="dob"><div class="field-error" data-testid="error-dob"></div></div>
+    <div><label for="gender">Gender</label><select id="gender" name="gender" data-testid="gender"><option value="">Select</option><option value="F">Female</option><option value="M">Male</option><option value="U">Unknown</option></select><div class="field-error" data-testid="error-gender"></div></div>
+  </div>
+  <div class="row">
+    <div><label for="phone">Phone (10 digits)</label><input id="phone" name="phone" data-testid="phone"><div class="field-error" data-testid="error-phone"></div></div>
+    <div><label for="email">Email (optional)</label><input id="email" name="email" data-testid="email"><div class="field-error" data-testid="error-email"></div></div>
+    <div><label for="zip">ZIP</label><input id="zip" name="zip" data-testid="zip"><div class="field-error" data-testid="error-zip"></div></div>
+  </div>
+  <div class="row">
+    <div><label for="payer">Primary payer</label><select id="payer" name="payer" data-testid="payer"><option value="">Select</option></select><div class="field-error" data-testid="error-payer"></div></div>
+    <div><label for="member_id">Member ID</label><input id="member_id" name="member_id" data-testid="member_id"><div class="field-error" data-testid="error-member_id"></div></div>
+  </div>
+  <div class="field-error" data-testid="error-form" role="alert"></div>
+  <button class="primary" type="submit" data-testid="register-patient">Register</button>
+</form></div>
+<div class="card"><div class="row"><div><label for="search">Search by name or MRN</label><input id="search" data-testid="patient-search"></div>
+<div style="flex:0"><button class="secondary" data-testid="search-button" id="search-btn">Search</button></div></div>
+<table data-testid="patients-table"><thead><tr><th>MRN</th><th>Name</th><th>DOB</th><th>Payer</th><th>Member ID</th></tr></thead><tbody></tbody></table>
+<p class="muted" data-testid="no-patients" hidden>No patients found.</p></div>
+</main>
+<script>
+async function loadPatients() {
+  const q = $("#search").value.trim(); const { data } = await API.get("/api/patients?q=" + encodeURIComponent(q));
+  const tbody = $('[data-testid="patients-table"] tbody'); tbody.innerHTML = "";
+  data.items.forEach(p => tbody.append(el("tr", { testid: "patient-" + p.mrn },
+    el("td", {}, p.mrn), el("td", { testid: "name" }, `${p.first_name} ${p.last_name}`), el("td", {}, p.dob), el("td", {}, p.payer), el("td", {}, p.member_id || "—"))));
+  $('[data-testid="no-patients"]').hidden = data.count > 0;
+}
+if (shell("patients")) (async () => {
+  const ref = (await API.get("/api/reference")).data;
+  ref.payers.forEach(p => $("#payer").append(el("option", { value: p }, p)));
+  $("#payer").addEventListener("change", e => { $("#member_id").disabled = e.target.value === "Self-Pay"; if (e.target.value === "Self-Pay") $("#member_id").value = ""; });
+  $("#patient-form").addEventListener("submit", async e => { e.preventDefault(); clearErrors(e.target);
+    const r = await API.post("/api/patients", formData(e.target));
+    if (!r.ok) return showError(r.data.field || "form", r.data.error);
+    toast(`Patient registered: ${r.data.mrn}`); e.target.reset(); $("#member_id").disabled = false; loadPatients(); });
+  $("#search-btn").addEventListener("click", loadPatients);
+  loadPatients();
+})();
+</script></body></html>

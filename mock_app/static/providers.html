@@ -1,0 +1,27 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>CareCycle RCM | Providers</title>
+<link rel="stylesheet" href="styles.css"><script src="common.js"></script><script src="app.js"></script></head>
+<body><main>
+<h1 data-testid="page-title">Providers</h1>
+<div class="card"><h2>Add rendering provider</h2>
+<form id="provider-form" novalidate><div class="row">
+  <div><label for="p-first">First name</label><input id="p-first" name="first_name" data-testid="first_name"><div class="field-error" data-testid="error-first_name"></div></div>
+  <div><label for="p-last">Last name</label><input id="p-last" name="last_name" data-testid="last_name"><div class="field-error" data-testid="error-last_name"></div></div>
+  <div><label for="npi">NPI</label><input id="npi" name="npi" data-testid="npi" maxlength="12"><div class="field-error" data-testid="error-npi"></div><div class="muted" data-testid="npi-status"></div></div>
+  <div><label for="specialty">Specialty</label><select id="specialty" name="specialty" data-testid="specialty"><option value="">Select</option><option>Cardiology</option><option>Family Medicine</option><option>Internal Medicine</option><option>Pediatrics</option></select><div class="field-error" data-testid="error-specialty"></div></div>
+</div><button class="primary" type="submit" data-testid="add-provider">Add provider</button></form></div>
+<div class="card"><table data-testid="providers-table"><thead><tr><th>Name</th><th>NPI</th><th>Specialty</th></tr></thead><tbody></tbody></table></div>
+</main>
+<script>
+async function loadProviders() { const { data } = await API.get("/api/providers"); const tbody = $('[data-testid="providers-table"] tbody'); tbody.innerHTML = "";
+  data.items.forEach(p => tbody.append(el("tr", { testid: "provider-" + p.npi }, el("td", {}, `Dr. ${p.first_name} ${p.last_name}`), el("td", {}, p.npi), el("td", {}, p.specialty)))); }
+if (shell("providers")) {
+  $("#npi").addEventListener("blur", async () => { const v = $("#npi").value.trim(); if (!v) return;
+    const { data } = await API.get(`/api/npi/${encodeURIComponent(v)}/validate`);
+    $('[data-testid="npi-status"]').textContent = data.valid ? "✔ Valid NPI" : "✖ " + data.reason; });
+  $("#provider-form").addEventListener("submit", async e => { e.preventDefault(); clearErrors(e.target);
+    const r = await API.post("/api/providers", formData(e.target));
+    if (!r.ok) return showError(r.data.field || "npi", r.data.error);
+    toast(`Provider added: Dr. ${r.data.first_name} ${r.data.last_name}`); e.target.reset(); $('[data-testid="npi-status"]').textContent = ""; loadProviders(); });
+  loadProviders();
+}
+</script></body></html>

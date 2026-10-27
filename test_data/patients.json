@@ -1,0 +1,126 @@
+{
+  "invalid_patients": [
+    {
+      "id": "missing-first-name",
+      "override": {
+        "first_name": ""
+      },
+      "field": "first_name",
+      "error": "First name is required"
+    },
+    {
+      "id": "digits-in-name",
+      "override": {
+        "last_name": "Sm1th"
+      },
+      "field": "last_name",
+      "error": "Last name may contain letters, spaces, ' and - only"
+    },
+    {
+      "id": "future-dob",
+      "override": {
+        "dob": "+1"
+      },
+      "field": "dob",
+      "error": "Date of birth cannot be in the future"
+    },
+    {
+      "id": "dob-over-120-years",
+      "override": {
+        "dob": "1890-01-01"
+      },
+      "field": "dob",
+      "error": "Date of birth cannot be more than 120 years ago"
+    },
+    {
+      "id": "phone-9-digits",
+      "override": {
+        "phone": "512555010"
+      },
+      "field": "phone",
+      "error": "Phone must be 10 digits"
+    },
+    {
+      "id": "phone-11-digits",
+      "override": {
+        "phone": "15125550101"
+      },
+      "field": "phone",
+      "error": "Phone must be 10 digits"
+    },
+    {
+      "id": "zip-4-digits",
+      "override": {
+        "zip": "7870"
+      },
+      "field": "zip",
+      "error": "ZIP code must be 5 digits"
+    },
+    {
+      "id": "bad-email",
+      "override": {
+        "email": "jane@nowhere"
+      },
+      "field": "email",
+      "error": "Enter a valid email address"
+    },
+    {
+      "id": "member-id-too-short",
+      "override": {
+        "member_id": "AB12"
+      },
+      "field": "member_id",
+      "error": "Member ID must be 6-15 letters or digits"
+    },
+    {
+      "id": "member-id-special-chars",
+      "override": {
+        "member_id": "AET-12345"
+      },
+      "field": "member_id",
+      "error": "Member ID must be 6-15 letters or digits"
+    }
+  ],
+  "icd10_codes": [
+    {
+      "id": "hypertension",
+      "code": "I10",
+      "valid": true
+    },
+    {
+      "id": "t2-diabetes",
+      "code": "E11.9",
+      "valid": true
+    },
+    {
+      "id": "lowercase-normalised",
+      "code": "j06.9",
+      "valid": true
+    },
+    {
+      "id": "7-char-code",
+      "code": "S72.001A",
+      "valid": true
+    },
+    {
+      "id": "covid-u-code",
+      "code": "U07.1",
+      "valid": true
+    },
+    {
+      "id": "starts-with-digit",
+      "code": "1E11",
+      "valid": false
+    },
+    {
+      "id": "numeric-only",
+      "code": "12345",
+      "valid": false
+    },
+    {
+      "id": "too-long-extension",
+      "code": "E11.12345",
+      "valid": false
+    }
+  ]
+}

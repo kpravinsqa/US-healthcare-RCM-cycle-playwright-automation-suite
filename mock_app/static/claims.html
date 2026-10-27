@@ -1,0 +1,42 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>CareCycle RCM | Claims</title>
+<link rel="stylesheet" href="styles.css"><script src="common.js"></script><script src="app.js"></script></head>
+<body><main>
+<h1 data-testid="page-title">Claims</h1>
+<div class="card"><h2>Create claim from encounter</h2><div class="row">
+  <div><label for="enc-select">Open encounter</label><select id="enc-select" data-testid="encounter-select"></select></div>
+  <div style="flex:0"><button class="primary" data-testid="create-claim" id="create-btn">Create claim</button></div></div></div>
+<div class="card"><table data-testid="claims-table"><thead><tr><th>Claim #</th><th>Patient</th><th>DOS</th><th>Payer</th><th>Billed</th><th>Paid</th><th>Adj.</th><th>Balance</th><th>Status</th><th></th></tr></thead><tbody></tbody></table>
+<p class="muted" data-testid="no-claims" hidden>No claims yet.</p></div>
+<div class="card" id="payment-panel" data-testid="payment-panel" hidden><h2>Post payment — <span data-testid="payment-claim"></span></h2>
+  <div class="row"><div><label for="paid">Paid amount</label><input id="paid" type="number" step="0.01" data-testid="paid-amount"><div class="field-error" data-testid="error-paid"></div></div>
+  <div><label for="adjustment">Contractual adjustment</label><input id="adjustment" type="number" step="0.01" value="0" data-testid="adjustment-amount"><div class="field-error" data-testid="error-adjustment"></div></div>
+  <div style="flex:0"><button class="primary" data-testid="post-payment" id="post-btn">Post</button></div></div></div>
+</main>
+<script>
+let payingId = null;
+async function load() {
+  const encs = (await API.get("/api/encounters")).data.items.filter(e => e.status === "OPEN");
+  const sel = $("#enc-select"); sel.innerHTML = ""; sel.append(el("option", { value: "" }, encs.length ? "Select encounter" : "No open encounters"));
+  encs.forEach(e => sel.append(el("option", { value: e.id }, `#${e.id} — ${e.patient_name} — ${e.date_of_service} — ${money(e.total_charge, "USD")}`)));
+  const { data } = await API.get("/api/claims"); const tbody = $('[data-testid="claims-table"] tbody'); tbody.innerHTML = "";
+  data.items.forEach(c => tbody.append(el("tr", { testid: "claim-" + c.claim_number },
+    el("td", {}, c.claim_number), el("td", {}, c.patient_name), el("td", {}, c.date_of_service), el("td", {}, c.payer),
+    el("td", { testid: "billed" }, money(c.billed_amount, "USD")), el("td", { testid: "paid" }, money(c.paid_amount, "USD")),
+    el("td", { testid: "adjusted" }, money(c.adjustment_amount, "USD")), el("td", { testid: "balance" }, money(c.outstanding_balance, "USD")),
+    el("td", {}, el("span", { class: "status", testid: "status" }, c.status), c.scrub_errors.length ? el("div", { class: "field-error", testid: "scrub-errors" }, c.scrub_errors.join("; ")) : ""),
+    el("td", {}, c.status === "DRAFT" ? el("button", { class: "secondary", testid: "submit-" + c.claim_number, onclick: async () => {
+        const r = await API.post(`/api/claims/${c.id}/submit`); toast(r.ok ? `${c.claim_number} submitted` : r.data.error, r.ok ? "success" : "error"); load(); } }, "Submit")
+      : ["SUBMITTED", "PARTIALLY_PAID"].includes(c.status) ? el("button", { class: "secondary", testid: "pay-" + c.claim_number, onclick: () => {
+        payingId = c.id; $('[data-testid="payment-claim"]').textContent = c.claim_number; $("#payment-panel").hidden = false; } }, "Post payment") : ""))));
+  $('[data-testid="no-claims"]').hidden = data.count > 0;
+}
+if (shell("claims")) {
+  $("#create-btn").addEventListener("click", async () => { const r = await API.post("/api/claims", { encounter_id: Number($("#enc-select").value) || null });
+    toast(r.ok ? `Claim ${r.data.claim_number} created` : r.data.error, r.ok ? "success" : "error"); load(); });
+  $("#post-btn").addEventListener("click", async () => { clearErrors($("#payment-panel"));
+    const r = await API.post(`/api/claims/${payingId}/payments`, { paid: Number($("#paid").value || -1), adjustment: Number($("#adjustment").value || 0) });
+    if (!r.ok) return showError(r.data.field || "paid", r.data.error);
+    toast(`Payment posted — status ${r.data.status}`); $("#payment-panel").hidden = true; $("#paid").value = ""; $("#adjustment").value = "0"; load(); });
+  load();
+}
+</script></body></html>

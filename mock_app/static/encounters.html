@@ -1,0 +1,49 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>CareCycle RCM | Encounters</title>
+<link rel="stylesheet" href="styles.css"><script src="common.js"></script><script src="app.js"></script></head>
+<body><main>
+<h1 data-testid="page-title">Encounters</h1>
+<div class="card"><h2>New encounter</h2>
+<form id="enc-form" novalidate>
+  <div class="row">
+    <div><label for="patient">Patient</label><select id="patient" data-testid="patient"></select><div class="field-error" data-testid="error-patient_id"></div></div>
+    <div><label for="provider">Rendering provider</label><select id="provider" data-testid="provider"></select><div class="field-error" data-testid="error-provider_id"></div></div>
+    <div><label for="dos">Date of service</label><input id="dos" type="date" data-testid="date_of_service"><div class="field-error" data-testid="error-date_of_service"></div></div>
+  </div>
+  <label for="dx">ICD-10 diagnosis codes (comma separated)</label><input id="dx" data-testid="diagnoses" placeholder="e.g. I10, E11.9">
+  <div class="field-error" data-testid="error-diagnoses"></div>
+  <label>Procedures (CPT × units)</label>
+  <div id="lines"></div>
+  <button class="secondary" type="button" data-testid="add-line" id="add-line">+ Add procedure</button>
+  <div class="field-error" data-testid="error-lines"></div>
+  <p>Total charge: <strong data-testid="total-charge">$0.00</strong></p>
+  <button class="primary" type="submit" data-testid="save-encounter">Save encounter</button>
+</form></div>
+<div class="card"><table data-testid="encounters-table"><thead><tr><th>ID</th><th>Patient</th><th>Provider</th><th>DOS</th><th>Dx</th><th>Charge</th><th>Status</th></tr></thead><tbody></tbody></table></div>
+</main>
+<script>
+let FEES = {};
+function recalc() { let t = 0; document.querySelectorAll(".line").forEach(l => { const f = FEES[l.querySelector("select").value]; const u = Number(l.querySelector("input").value) || 0; if (f) t += f.fee * u; });
+  $('[data-testid="total-charge"]').textContent = money(t, "USD"); }
+function addLine() { const n = document.querySelectorAll(".line").length;
+  const sel = el("select", { testid: `cpt-${n}`, onchange: recalc }, el("option", { value: "" }, "Select CPT"), ...Object.entries(FEES).map(([c, f]) => el("option", { value: c }, `${c} — ${f.description} ($${f.fee.toFixed(2)})`)));
+  const units = el("input", { type: "number", value: "1", min: "1", testid: `units-${n}`, oninput: recalc });
+  $("#lines").append(el("div", { class: "row line" }, el("div", {}, sel), el("div", { style: "flex:0 0 100px" }, units))); recalc(); }
+async function loadEncounters() { const { data } = await API.get("/api/encounters"); const tbody = $('[data-testid="encounters-table"] tbody'); tbody.innerHTML = "";
+  data.items.forEach(e => tbody.append(el("tr", { testid: "encounter-" + e.id }, el("td", {}, "#" + e.id), el("td", {}, e.patient_name), el("td", {}, e.provider_name),
+    el("td", {}, e.date_of_service), el("td", {}, e.diagnoses.join(", ")), el("td", {}, money(e.total_charge, "USD")), el("td", {}, el("span", { class: "status" }, e.status))))); }
+if (shell("encounters")) (async () => {
+  FEES = (await API.get("/api/reference")).data.fee_schedule;
+  const pts = (await API.get("/api/patients")).data.items, provs = (await API.get("/api/providers")).data.items;
+  $("#patient").append(el("option", { value: "" }, "Select patient"), ...pts.map(p => el("option", { value: p.id }, `${p.first_name} ${p.last_name} (${p.mrn})`)));
+  $("#provider").append(el("option", { value: "" }, "Select provider"), ...provs.map(p => el("option", { value: p.id }, `Dr. ${p.first_name} ${p.last_name}`)));
+  addLine(); $("#add-line").addEventListener("click", addLine);
+  $("#enc-form").addEventListener("submit", async e => { e.preventDefault(); clearErrors(e.target);
+    const lines = [...document.querySelectorAll(".line")].filter(l => l.querySelector("select").value).map(l => ({ cpt: l.querySelector("select").value, units: Number(l.querySelector("input").value) }));
+    const body = { patient_id: Number($("#patient").value) || null, provider_id: Number($("#provider").value) || null, date_of_service: $("#dos").value,
+      diagnoses: $("#dx").value.split(","), lines };
+    const r = await API.post("/api/encounters", body);
+    if (!r.ok) return showError(r.data.field || "lines", r.data.error);
+    toast(`Encounter #${r.data.id} saved — ${money(r.data.total_charge, "USD")}`); loadEncounters(); });
+  loadEncounters();
+})();
+</script></body></html>

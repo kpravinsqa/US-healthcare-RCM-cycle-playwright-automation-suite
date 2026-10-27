@@ -1,0 +1,7 @@
+playwright>=1.48
+pytest>=8.3
+pytest-playwright>=0.5.2
+pytest-html>=4.1
+pytest-xdist>=3.6
+pytest-rerunfailures>=14.0
+jsonschema>=4.23

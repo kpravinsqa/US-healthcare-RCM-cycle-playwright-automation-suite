@@ -1,0 +1,40 @@
+name: Playwright Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 2 * * 1-5"   # nightly regression, 08:00 IST on weekdays
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [smoke, regression]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
+
+      - name: Run ${{ matrix.suite }} suite
+        run: pytest -m ${{ matrix.suite }} -n auto --reruns 1 --html=reports/${{ matrix.suite }}-report.html
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.suite }}-report
+          path: reports/

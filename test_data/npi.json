@@ -1,0 +1,11 @@
+{
+  "npi_cases": [
+    {"id": "valid-cms-example", "npi": "1234567893", "valid": true, "reason": null},
+    {"id": "valid-generated", "npi": "1456789019", "valid": true, "reason": null},
+    {"id": "9-digits-below-boundary", "npi": "123456789", "valid": false, "reason": "NPI must be exactly 10 digits"},
+    {"id": "11-digits-above-boundary", "npi": "12345678931", "valid": false, "reason": "NPI must be exactly 10 digits"},
+    {"id": "bad-check-digit", "npi": "1234567890", "valid": false, "reason": "NPI check digit is invalid"},
+    {"id": "alpha-characters", "npi": "12345ABCDE", "valid": false, "reason": "NPI must contain digits only"},
+    {"id": "all-zeros", "npi": "0000000000", "valid": false, "reason": "NPI check digit is invalid"}
+  ]
+}
